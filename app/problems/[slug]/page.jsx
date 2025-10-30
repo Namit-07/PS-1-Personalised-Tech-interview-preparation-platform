@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '../../lib/AuthContext';
 import { problemsAPI } from '../../lib/api';
+import AIChat from '../../components/AIChat';
 
 export default function ProblemSolverPage() {
   const router = useRouter();
@@ -370,6 +371,15 @@ export default function ProblemSolverPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Chat Component */}
+      <AIChat 
+        problemContext={{
+          problemTitle: problem?.title,
+          difficulty: problem?.difficulty,
+          topics: problem?.topics
+        }}
+      />
     </div>
   );
 }
