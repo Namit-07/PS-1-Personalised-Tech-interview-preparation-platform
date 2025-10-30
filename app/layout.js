@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "TechPrep - Personalized Interview Preparation",
-  description: "AI-powered interview prep platform that adapts to your goals",
+  title: "SkillForge.AI",
+  description: "Prepare for coding interviews with AI-driven personalized practice and real-time feedback.",
 };
 
 export default function RootLayout({ children }) {
