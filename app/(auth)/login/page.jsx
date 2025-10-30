@@ -80,10 +80,10 @@ export default function LoginPage() {
 
       {/* Content */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full space-y-8 bg-linear-to-br from-gray-900 to-gray-800 p-8 rounded-2xl border border-gray-800 shadow-2xl">
+        <div className="max-w-md w-full space-y-8 bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-2xl border border-gray-800 shadow-2xl">
           <div className="text-center">
             <h2 className="text-4xl font-black mb-2">
-              <span className="bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
+              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
                 Welcome Back 👋
               </span>
             </h2>
@@ -136,7 +136,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-purple-500/30"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-purple-500/30"
             >
               {loading ? 'Logging in...' : 'Log In'}
             </button>
@@ -145,7 +145,7 @@ export default function LoginPage() {
               <span className="text-gray-400">
                 Don't have an account?{' '}
               </span>
-              <Link href="/signup" className="font-semibold bg-linear-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text hover:from-blue-300 hover:to-purple-300 transition-all">
+              <Link href="/signup" className="font-semibold bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text hover:from-blue-300 hover:to-purple-300 transition-all">
                 Sign up
               </Link>
             </div>
