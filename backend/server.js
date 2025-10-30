@@ -12,12 +12,16 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// CORS configuration
+// CORS configuration - Allow multiple origins
 const allowedOrigins = [
   'http://localhost:3000',
   'https://skillforgeai-tearhackx.vercel.app',
-  process.env.FRONTEND_URL
+  process.env.FRONTEND_URL,
+  // Allow any additional origins from environment variable (comma-separated)
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
 ].filter(Boolean);
+
+console.log('🌐 Allowed CORS origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -27,6 +31,7 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn('⚠️ CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
