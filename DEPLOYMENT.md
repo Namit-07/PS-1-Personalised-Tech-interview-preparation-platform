@@ -186,16 +186,23 @@ Output Directory: .next (default)
 Install Command: npm install (default)
 ```
 
-### 3.3 Add Environment Variable
+### 3.3 Add Environment Variables
 ```
 1. Click "Environment Variables"
-2. Add:
+2. Add these variables:
+   
    Key: NEXT_PUBLIC_API_URL
    Value: https://YOUR_RAILWAY_URL.up.railway.app/api
+   
+   Key: TURBOPACK
+   Value: 0
+   
 3. Select all environments (Production, Preview, Development)
 ```
 
-**Replace `YOUR_RAILWAY_URL` with your actual Railway backend URL**
+**Important Notes:**
+- Replace `YOUR_RAILWAY_URL` with your actual Railway backend URL
+- `TURBOPACK=0` disables Turbopack for compatibility with Tailwind v4
 
 ### 3.4 Deploy
 ```

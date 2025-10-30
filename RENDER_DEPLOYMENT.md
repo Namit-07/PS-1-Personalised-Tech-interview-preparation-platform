@@ -39,6 +39,12 @@ Build Command: npm install
 Start Command: node server.js
 ```
 
+**IMPORTANT for Next.js Frontend on Render:**
+- If deploying the frontend (not just backend), you MUST add this environment variable:
+  - Key: `TURBOPACK`
+  - Value: `0`
+  - This disables Turbopack which is incompatible with Tailwind v4 native binaries
+
 ### 2.3 Select Plan
 ```
 1. Select "Free" plan (scroll down to find it)
@@ -151,11 +157,14 @@ After your Render backend is live:
 ```
 1. Go to vercel.com
 2. Import your repo
-3. Add environment variable:
+3. Add environment variables:
    NEXT_PUBLIC_API_URL = https://your-render-url.onrender.com/api
+   TURBOPACK = 0
 4. Deploy
 5. Done! ✅
 ```
+
+**Note:** `TURBOPACK=0` disables Turbopack to ensure Tailwind v4 builds correctly.
 
 ---
 
