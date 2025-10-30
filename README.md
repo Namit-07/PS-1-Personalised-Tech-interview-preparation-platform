@@ -150,6 +150,8 @@ An **intelligent interview prep platform** that:
 
 ## ⚡ Quick Start
 
+> **🚀 For Hackathon Deployment**: See [DEPLOYMENT.md](DEPLOYMENT.md) for complete Vercel + Railway + MongoDB Atlas setup (15-20 minutes, 100% free)
+
 ### Prerequisites
 - Node.js 18+ installed
 - MongoDB running (local or Atlas)
