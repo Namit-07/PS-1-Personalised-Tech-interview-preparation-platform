@@ -24,23 +24,86 @@ const userSchema = new mongoose.Schema({
     select: false // Don't return password by default
   },
   targetCompany: {
-    type: String,
-    default: null,
-    trim: true
+    type: [String],
+    default: []
   },
   targetRole: {
     type: String,
     default: null,
     trim: true
   },
+  practiceTopics: {
+    type: [String],
+    default: []
+  },
   experienceLevel: {
     type: String,
-    enum: ['Fresher', '0-1 years', '1-2 years', '2-3 years', '3-5 years', '5+ years'],
+    enum: ['Beginner', 'Intermediate', 'Advanced'],
+    default: null
+  },
+  domain: {
+    type: String,
+    enum: ['Student', 'Working Professional', 'Career Switcher', 'Recent Graduate'],
     default: null
   },
   onboardingComplete: {
     type: Boolean,
     default: false
+  },
+  role: {
+    type: String,
+    enum: ['student', 'recruiter'],
+    default: null
+  },
+  roleSelected: {
+    type: Boolean,
+    default: false
+  },
+  // Profile Information
+  headline: {
+    type: String,
+    trim: true
+  },
+  summary: {
+    type: String,
+    trim: true
+  },
+  location: {
+    type: String,
+    trim: true
+  },
+  company: {
+    type: String,
+    trim: true
+  },
+  position: {
+    type: String,
+    trim: true
+  },
+  experience: {
+    type: String,
+    trim: true
+  },
+  skills: {
+    type: [String],
+    default: []
+  },
+  linkedin: {
+    type: String,
+    trim: true
+  },
+  github: {
+    type: String,
+    trim: true
+  },
+  portfolio: {
+    type: String,
+    trim: true
+  },
+  linkedinId: {
+    type: String,
+    unique: true,
+    sparse: true
   },
   stats: {
     totalProblemsSolved: { type: Number, default: 0 },

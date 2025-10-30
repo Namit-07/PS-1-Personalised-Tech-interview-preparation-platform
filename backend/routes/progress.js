@@ -3,6 +3,7 @@ const router = express.Router();
 const UserProgress = require('../models/UserProgress');
 const TopicProficiency = require('../models/TopicProficiency');
 const Problem = require('../models/Problem');
+const UserActivity = require('../models/UserActivity');
 const { protect } = require('../middleware/auth');
 
 // @route   GET /api/progress
@@ -59,17 +60,20 @@ router.get('/stats', protect, async (req, res) => {
     const completionRate = Math.min((totalSolved / requiredProblems) * 100, 100);
     const successProbability = Math.round(completionRate * 0.7); // Simplified formula
 
+    // Use user.stats if available, otherwise use calculated values
+    const stats = {
+      totalAttempted,
+      totalSolved: req.user.stats?.totalProblemsSolved || totalSolved,
+      breakdown,
+      successProbability,
+      currentStreak: req.user.stats?.currentStreak || 0,
+      xp: req.user.stats?.xp || 0,
+      level: req.user.stats?.level || 1
+    };
+
     res.json({
       success: true,
-      stats: {
-        totalAttempted,
-        totalSolved,
-        breakdown,
-        successProbability,
-        currentStreak: req.user.stats.currentStreak,
-        xp: req.user.stats.xp,
-        level: req.user.stats.level
-      }
+      stats
     });
   } catch (error) {
     console.error('Get stats error:', error);
@@ -94,6 +98,77 @@ router.get('/topics', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('Get topic proficiency error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error.message 
+    });
+  }
+});
+
+// @route   GET /api/progress/activity
+// @desc    Get user's activity data for the last 365 days
+// @access  Private
+router.get('/activity', protect, async (req, res) => {
+  try {
+    // Get activity for the last 365 days
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(startDate.getFullYear() - 1);
+
+    const activities = await UserActivity.find({ 
+      userId: req.user._id,
+      date: { 
+        $gte: startDate.toISOString().split('T')[0],
+        $lte: endDate.toISOString().split('T')[0]
+      }
+    }).select('date count -_id').sort({ date: 1 });
+
+    res.json(activities);
+  } catch (error) {
+    console.error('Get activity error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error.message 
+    });
+  }
+});
+
+// @route   POST /api/progress/activity
+// @desc    Update user's activity for today
+// @access  Private
+router.post('/activity', protect, async (req, res) => {
+  try {
+    const { problemsSolved = 1 } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Find or create today's activity
+    let activity = await UserActivity.findOne({
+      userId: req.user._id,
+      date: today
+    });
+
+    if (activity) {
+      // Update existing activity
+      activity.count += problemsSolved;
+      await activity.save();
+    } else {
+      // Create new activity
+      activity = await UserActivity.create({
+        userId: req.user._id,
+        date: today,
+        count: problemsSolved
+      });
+    }
+
+    res.json({
+      success: true,
+      activity: {
+        date: activity.date,
+        count: activity.count
+      }
+    });
+  } catch (error) {
+    console.error('Update activity error:', error);
     res.status(500).json({ 
       error: 'Server error',
       message: error.message 

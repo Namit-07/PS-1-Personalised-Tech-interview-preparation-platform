@@ -65,6 +65,7 @@ export const problemsAPI = {
 
 // Progress API
 export const progressAPI = {
+  getAll: () => api.get('/progress'),
   getProgress: () => api.get('/progress'),
   getStats: () => api.get('/progress/stats'),
   getTopics: () => api.get('/progress/topics'),

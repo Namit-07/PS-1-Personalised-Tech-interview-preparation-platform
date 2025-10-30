@@ -8,7 +8,9 @@ export default function AIChat({ problemContext }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hi! I'm your AI coding mentor. Ask me anything about algorithms, problem-solving strategies, or get help with the current problem! 🚀"
+      content: problemContext?.page === 'dashboard' 
+        ? "Hi! I'm your AI career coach. Ask me about your progress, interview readiness, or what to practice next! 🎯\n\nTry: '/ready' to check interview readiness or '/plan' for a study plan!"
+        : "Hi! I'm your AI coding mentor. Ask me anything about algorithms, problem-solving strategies, or get help with the current problem! 🚀"
     }
   ]);
   const [input, setInput] = useState('');
@@ -23,6 +25,90 @@ export default function AIChat({ problemContext }) {
     scrollToBottom();
   }, [messages]);
 
+  // Handle smart commands
+  const handleSmartCommand = (message) => {
+    const stats = problemContext?.userStats || {};
+    
+    if (message.toLowerCase() === '/ready') {
+      const problemsSolved = stats.problemsSolved || 0;
+      const streak = stats.currentStreak || 0;
+      const level = stats.level || 1;
+      const targetCompanies = stats.targetCompany?.join(', ') || 'FAANG';
+      
+      const readinessScore = Math.min(Math.round((problemsSolved / 150 * 50) + (streak * 2) + (level * 5)), 100);
+      
+      let readinessMessage = `🎯 **Interview Readiness Analysis for ${targetCompanies}**\n\n`;
+      readinessMessage += `**Overall Score: ${readinessScore}%**\n\n`;
+      readinessMessage += `📊 Your Stats:\n`;
+      readinessMessage += `• Problems Solved: ${problemsSolved}/150 (${Math.round(problemsSolved/150*100)}%)\n`;
+      readinessMessage += `• Current Streak: ${streak} days 🔥\n`;
+      readinessMessage += `• Level: ${level}\n\n`;
+      
+      if (readinessScore >= 80) {
+        readinessMessage += `✅ **You're ready!** Your preparation is solid. Focus on mock interviews and system design.\n\n`;
+        readinessMessage += `Next steps:\n• Practice mock interviews\n• Review past mistakes\n• Study company-specific patterns`;
+      } else if (readinessScore >= 60) {
+        readinessMessage += `⚡ **Almost there!** You need more practice in key areas.\n\n`;
+        readinessMessage += `Recommended focus:\n• Solve 20 more medium problems\n• Strengthen weak topics\n• Build ${15 - streak} more days streak`;
+      } else {
+        readinessMessage += `💪 **Keep going!** You're building a strong foundation.\n\n`;
+        readinessMessage += `Action plan:\n• Solve 50 more problems (Easy/Medium mix)\n• Build a 14-day streak\n• Focus on Arrays, Strings, and Hash Maps first`;
+      }
+      
+      return readinessMessage;
+    }
+    
+    if (message.toLowerCase() === '/plan') {
+      const problemsSolved = stats.problemsSolved || 0;
+      const experienceLevel = stats.experienceLevel || 'Intermediate';
+      
+      let planMessage = `📅 **Personalized 30-Day Study Plan**\n\n`;
+      planMessage += `Based on your level: ${experienceLevel}\n`;
+      planMessage += `Current progress: ${problemsSolved} problems\n\n`;
+      
+      planMessage += `**Week 1-2: Foundations**\n`;
+      planMessage += `• Days 1-5: Arrays & Strings (2 problems/day)\n`;
+      planMessage += `• Days 6-10: Hash Maps & Sets (2 problems/day)\n`;
+      planMessage += `• Days 11-14: Two Pointers & Sliding Window (2 problems/day)\n\n`;
+      
+      planMessage += `**Week 3: Core Data Structures**\n`;
+      planMessage += `• Days 15-18: Linked Lists (2 problems/day)\n`;
+      planMessage += `• Days 19-21: Stacks & Queues (2 problems/day)\n\n`;
+      
+      planMessage += `**Week 4: Advanced Topics**\n`;
+      planMessage += `• Days 22-25: Trees & Graphs (2 problems/day)\n`;
+      planMessage += `• Days 26-28: Dynamic Programming basics (1 problem/day)\n`;
+      planMessage += `• Days 29-30: Mock interviews & revision\n\n`;
+      
+      planMessage += `🎯 Goal: Solve 60+ problems in 30 days!`;
+      
+      return planMessage;
+    }
+    
+    if (message.toLowerCase() === '/practice' || message.toLowerCase() === '/next') {
+      const problemsSolved = stats.problemsSolved || 0;
+      
+      let practiceMessage = `🎯 **Recommended Next Steps**\n\n`;
+      
+      if (problemsSolved < 20) {
+        practiceMessage += `Focus on **Easy Arrays & Strings**:\n`;
+        practiceMessage += `1. Two Sum\n2. Valid Anagram\n3. Contains Duplicate\n4. Best Time to Buy and Sell Stock`;
+      } else if (problemsSolved < 50) {
+        practiceMessage += `Ready for **Medium Hash Maps**:\n`;
+        practiceMessage += `1. Group Anagrams\n2. Top K Frequent Elements\n3. Product of Array Except Self\n4. Longest Consecutive Sequence`;
+      } else {
+        practiceMessage += `Try **Advanced Problems**:\n`;
+        practiceMessage += `1. Course Schedule (Graphs)\n2. Coin Change (DP)\n3. Merge K Sorted Lists\n4. Word Search`;
+      }
+      
+      practiceMessage += `\n\n💡 Tip: Always analyze time/space complexity after solving!`;
+      
+      return practiceMessage;
+    }
+    
+    return null;
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -31,6 +117,17 @@ export default function AIChat({ problemContext }) {
     
     // Add user message
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    
+    // Check for smart commands
+    const smartResponse = handleSmartCommand(userMessage);
+    if (smartResponse) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: smartResponse
+      }]);
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -56,7 +153,6 @@ export default function AIChat({ problemContext }) {
       }]);
     } catch (error) {
       console.error('Chat error:', error);
-      console.error('Error details:', error.response?.data || error.message);
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "Sorry, I'm having trouble connecting right now. Please try again! 😅"
@@ -73,12 +169,19 @@ export default function AIChat({ problemContext }) {
     }
   };
 
-  const quickQuestions = [
-    "How should I approach this problem?",
-    "What's the optimal time complexity?",
-    "Can you explain the hint?",
-    "Help me debug my code"
-  ];
+  const quickQuestions = problemContext?.page === 'dashboard' 
+    ? [
+        "/ready",
+        "/practice",
+        "/plan",
+        "What should I focus on?"
+      ]
+    : [
+        "How should I approach this problem?",
+        "What's the optimal time complexity?",
+        "Can you explain the hint?",
+        "Help me debug my code"
+      ];
 
   return (
     <>
@@ -99,7 +202,9 @@ export default function AIChat({ problemContext }) {
             <div className="flex items-center space-x-2">
               <span className="text-2xl">🤖</span>
               <div>
-                <h3 className="text-white font-bold">AI Coding Mentor</h3>
+                <h3 className="text-white font-bold">
+                  {problemContext?.page === 'dashboard' ? 'AI Career Coach' : 'AI Coding Mentor'}
+                </h3>
                 <p className="text-purple-100 text-xs">Always here to help!</p>
               </div>
             </div>

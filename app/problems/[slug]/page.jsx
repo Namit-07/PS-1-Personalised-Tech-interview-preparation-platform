@@ -3,13 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '../../lib/AuthContext';
+import { useActivity } from '../../lib/ActivityContext';
 import { problemsAPI } from '../../lib/api';
 import AIChat from '../../components/AIChat';
+import { ProblemDetailSkeleton } from '../../components/SkeletonLoader';
+import SuccessAnimation from '../../components/SuccessAnimation';
 
 export default function ProblemSolverPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
+  const { updateActivity } = useActivity();
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
@@ -18,6 +22,7 @@ export default function ProblemSolverPage() {
   const [result, setResult] = useState(null);
   const [showHints, setShowHints] = useState(false);
   const [revealedHints, setRevealedHints] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const languages = [
     { value: 'javascript', label: 'JavaScript', starter: '// Write your solution here\nfunction solution() {\n  \n}' },
@@ -81,9 +86,18 @@ export default function ProblemSolverPage() {
       });
 
       setResult(response.data.result);
+      
+      // Update streak calendar when problem is solved successfully
+      if (response.data.result?.passed) {
+        setShowSuccess(true); // Show celebration animation
+        await updateActivity(1); // Increment today's activity count
+      }
     } catch (error) {
       console.error('Submit error:', error);
-      alert('Error submitting solution. Please try again.');
+      setResult({
+        passed: false,
+        message: error.response?.data?.message || 'Error submitting solution. Please try again.'
+      });
     } finally {
       setSubmitting(false);
     }
@@ -105,14 +119,7 @@ export default function ProblemSolverPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading problem...</p>
-        </div>
-      </div>
-    );
+    return <ProblemDetailSkeleton />;
   }
 
   if (!problem) {
@@ -121,6 +128,12 @@ export default function ProblemSolverPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      {/* Success Animation */}
+      <SuccessAnimation 
+        show={showSuccess} 
+        onComplete={() => setShowSuccess(false)} 
+      />
+      
       {/* Header */}
       <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4">

@@ -36,6 +36,24 @@ const problemSchema = new mongoose.Schema({
     explanation: String
   }],
   hints: [String],
+  learningResources: {
+    videos: [{
+      title: String,
+      url: String,
+      channel: String,
+      duration: String
+    }],
+    articles: [{
+      title: String,
+      url: String,
+      source: String
+    }],
+    documentation: [{
+      title: String,
+      url: String,
+      description: String
+    }]
+  },
   solution: {
     approach: String,
     code: String,

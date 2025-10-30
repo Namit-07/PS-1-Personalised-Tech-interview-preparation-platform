@@ -178,10 +178,18 @@ router.post('/submit', protect, async (req, res) => {
 });
 
 // @route   GET /api/problems/recommended
-// @desc    Get recommended problems for user
+// @desc    Get recommended problems for user based on onboarding preferences
 // @access  Private
 router.get('/user/recommended', protect, async (req, res) => {
   try {
+    console.log('Getting recommendations for user:', req.user.email);
+    console.log('User preferences:', {
+      targetCompany: req.user.targetCompany,
+      practiceTopics: req.user.practiceTopics,
+      experienceLevel: req.user.experienceLevel,
+      domain: req.user.domain
+    });
+
     // Get user's solved problems
     const solvedProblems = await UserProgress.find({
       userId: req.user._id,
@@ -190,24 +198,90 @@ router.get('/user/recommended', protect, async (req, res) => {
 
     const solvedIds = solvedProblems.map(p => p.problemId);
 
-    // Simple recommendation: unsolved problems matching user's target
+    // Build smart query based on onboarding data
     let query = {
       _id: { $nin: solvedIds }
     };
 
-    if (req.user.targetCompany) {
-      query.companies = { $in: [req.user.targetCompany] };
+    // Priority 1: Match target companies (if user selected any)
+    if (req.user.targetCompany && req.user.targetCompany.length > 0) {
+      query.companies = { $in: req.user.targetCompany };
     }
 
-    const recommendations = await Problem.find(query)
+    // Priority 2: Match practice topics (if user selected any)
+    if (req.user.practiceTopics && req.user.practiceTopics.length > 0) {
+      query.topics = { $in: req.user.practiceTopics };
+    }
+
+    // Priority 3: Adjust difficulty based on experience level
+    if (req.user.experienceLevel) {
+      if (req.user.experienceLevel === 'Beginner') {
+        query.difficulty = { $in: ['Easy', 'Medium'] };
+      } else if (req.user.experienceLevel === 'Intermediate') {
+        query.difficulty = { $in: ['Medium', 'Hard'] };
+      } else if (req.user.experienceLevel === 'Advanced') {
+        query.difficulty = { $in: ['Medium', 'Hard'] };
+      }
+    }
+
+    console.log('Recommendation query:', JSON.stringify(query, null, 2));
+
+    // Get recommendations with the built query
+    let recommendations = await Problem.find(query)
       .select('-testCases -solution.code')
-      .limit(10)
+      .limit(15)
       .sort({ 'metadata.frequency': -1 });
+
+    // If no recommendations found with strict filters, relax them
+    if (recommendations.length < 5) {
+      console.log('Not enough recommendations, relaxing filters...');
+      
+      // Try with just topics and difficulty
+      const relaxedQuery = {
+        _id: { $nin: solvedIds }
+      };
+
+      if (req.user.practiceTopics && req.user.practiceTopics.length > 0) {
+        relaxedQuery.topics = { $in: req.user.practiceTopics };
+      }
+
+      if (req.user.experienceLevel) {
+        if (req.user.experienceLevel === 'Beginner') {
+          relaxedQuery.difficulty = { $in: ['Easy', 'Medium'] };
+        } else if (req.user.experienceLevel === 'Intermediate') {
+          relaxedQuery.difficulty = { $in: ['Medium', 'Hard'] };
+        } else if (req.user.experienceLevel === 'Advanced') {
+          relaxedQuery.difficulty = { $in: ['Medium', 'Hard'] };
+        }
+      }
+
+      recommendations = await Problem.find(relaxedQuery)
+        .select('-testCases -solution.code')
+        .limit(15)
+        .sort({ 'metadata.frequency': -1 });
+    }
+
+    // If still not enough, just get popular unsolved problems
+    if (recommendations.length < 5) {
+      console.log('Still not enough, getting popular problems...');
+      recommendations = await Problem.find({ _id: { $nin: solvedIds } })
+        .select('-testCases -solution.code')
+        .limit(15)
+        .sort({ 'metadata.frequency': -1 });
+    }
+
+    console.log(`Found ${recommendations.length} recommendations`);
 
     res.json({
       success: true,
       count: recommendations.length,
-      problems: recommendations
+      problems: recommendations,
+      basedOn: {
+        targetCompanies: req.user.targetCompany || [],
+        practiceTopics: req.user.practiceTopics || [],
+        experienceLevel: req.user.experienceLevel || 'Not set',
+        domain: req.user.domain || 'Not set'
+      }
     });
   } catch (error) {
     console.error('Get recommendations error:', error);

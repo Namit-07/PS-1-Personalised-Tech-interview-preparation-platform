@@ -20,10 +20,11 @@ app.use(cors({
 
 app.use(express.json());
 
-// Rate limiting
+// Rate limiting - More relaxed for development
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 1000, // limit each IP to 1000 requests per minute (very generous for dev)
+  message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api/', limiter);
 
@@ -43,6 +44,8 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/problems', require('./routes/problems'));
 app.use('/api/progress', require('./routes/progress'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/linkedin', require('./routes/linkedin'));
+app.use('/api/leaderboard', require('./routes/leaderboard'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
