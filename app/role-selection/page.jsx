@@ -14,10 +14,13 @@ export default function RoleSelectionPage() {
   const [userName, setUserName] = useState('');
 
   const handleRoleSelect = async (role) => {
+    console.log('🎯 Role selected:', role);
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      
+      console.log('📡 Sending role to API:', API_URL);
       
       // Save role to user profile
       const response = await fetch(`${API_URL}/auth/role`, {
@@ -31,6 +34,7 @@ export default function RoleSelectionPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Role saved, user data:', data.user);
         
         // Update localStorage with the new user data including role
         if (data.user) {
@@ -41,14 +45,20 @@ export default function RoleSelectionPage() {
         
         // Show onboarding for students, redirect recruiters to leaderboard
         if (role === 'student') {
+          console.log('🎓 Student role detected - showing onboarding wizard');
           setShowOnboarding(true);
           setLoading(false);
         } else {
+          console.log('💼 Recruiter role detected - redirecting to leaderboard');
           router.push('/leaderboard'); // Recruiters see leaderboard
         }
+      } else {
+        console.error('❌ Failed to save role:', response.status);
+        alert('Error setting role. Please try again.');
+        setLoading(false);
       }
     } catch (error) {
-      console.error('Error setting role:', error);
+      console.error('❌ Error setting role:', error);
       alert('Error setting role. Please try again.');
       setLoading(false);
     }
