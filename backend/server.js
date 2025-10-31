@@ -16,6 +16,7 @@ app.use(helmet({
 const allowedOrigins = [
   'http://localhost:3000',
   'https://skillforgeai-tearhackx.vercel.app',
+  'https://ps-1-personalised-tech-interview-preparation-platfor-7zixbm88n.vercel.app',
   process.env.FRONTEND_URL,
   // Allow any additional origins from environment variable (comma-separated)
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
