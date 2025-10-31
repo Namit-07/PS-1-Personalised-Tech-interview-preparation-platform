@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '../lib/AuthContext';
+import OnboardingWizard from '../components/OnboardingWizard';
 
 export default function RoleSelectionPage() {
   const router = useRouter();
   const { updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [userName, setUserName] = useState('');
 
   const handleRoleSelect = async (role) => {
     setLoading(true);
@@ -33,22 +36,60 @@ export default function RoleSelectionPage() {
         if (data.user) {
           localStorage.setItem('user', JSON.stringify(data.user));
           updateUser(data.user); // Update AuthContext
+          setUserName(data.user.name);
         }
         
-        // Redirect based on role
-        if (role === 'recruiter') {
-          router.push('/leaderboard'); // Recruiters see leaderboard
+        // Show onboarding for students, redirect recruiters to leaderboard
+        if (role === 'student') {
+          setShowOnboarding(true);
+          setLoading(false);
         } else {
-          router.push('/dashboard'); // Students see onboarding/dashboard
+          router.push('/leaderboard'); // Recruiters see leaderboard
         }
       }
     } catch (error) {
       console.error('Error setting role:', error);
       alert('Error setting role. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
+
+  const handleOnboardingComplete = async (onboardingData) => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      
+      const response = await fetch(`${API_URL}/auth/onboarding`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(onboardingData)
+      });
+      
+      const data = await response.json();
+
+      if (data.success) {
+        // Update user in context and localStorage
+        if (data.user) {
+          updateUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        router.push('/dashboard');
+      } else {
+        alert('Failed to complete onboarding. Please try again.');
+      }
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      alert('Failed to complete onboarding. Please try again.');
+    }
+  };
+
+  // Show onboarding wizard for students
+  if (showOnboarding) {
+    return <OnboardingWizard onComplete={handleOnboardingComplete} userName={userName} />;
+  }
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
