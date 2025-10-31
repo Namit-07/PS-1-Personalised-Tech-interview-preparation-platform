@@ -14,9 +14,10 @@ export default function RoleSelectionPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       
       // Save role to user profile
-      const response = await fetch('http://localhost:5000/api/auth/role', {
+      const response = await fetch(`${API_URL}/auth/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
