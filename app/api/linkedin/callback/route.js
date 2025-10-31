@@ -21,7 +21,8 @@ export async function GET(request) {
 
   try {
     // Exchange code for access token via backend
-    const backendResponse = await fetch('http://localhost:5000/api/linkedin/exchange', {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const backendResponse = await fetch(`${API_URL}/linkedin/exchange`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
