@@ -11,13 +11,55 @@ import Navbar from '../components/Navbar';
 import { DashboardSkeleton } from '../components/SkeletonLoader';
 import StreakCalendar from '../components/StreakCalendar';
 import AIChat from '../components/AIChat';
+import OnboardingWizard from '../components/OnboardingWizard';
 
 export default function DashboardNew() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { activityData, isLoading: activityLoading } = useActivity();
   const router = useRouter();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    // Check if user needs onboarding
+    if (user && user.role === 'student' && !user.onboardingComplete) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
+
+  const handleOnboardingComplete = async (onboardingData) => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      
+      const response = await fetch(`${API_URL}/auth/onboarding`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(onboardingData)
+      });
+      
+      const data = await response.json();
+
+      if (data.success) {
+        // Update user in context
+        updateUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setShowOnboarding(false);
+      }
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      alert('Failed to complete onboarding. Please try again.');
+    }
+  };
+
+  // Show onboarding wizard if needed
+  if (showOnboarding) {
+    return <OnboardingWizard onComplete={handleOnboardingComplete} userName={user?.name} />;
+  }
 
   useEffect(() => {
     const fetchStats = async () => {
