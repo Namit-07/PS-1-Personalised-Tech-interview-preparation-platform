@@ -19,10 +19,12 @@ export default function LeaderboardPage() {
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await fetch(
-        `http://localhost:5000/api/leaderboard?period=${filter}&category=${categoryFilter}`
+        `${API_URL}/leaderboard?period=${filter}&category=${categoryFilter}`
       );
       const data = await response.json();
+      console.log('📊 Leaderboard data:', data);
       setLeaderboard(data.leaderboard || []);
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
