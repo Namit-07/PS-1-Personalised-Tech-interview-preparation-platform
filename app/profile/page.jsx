@@ -37,6 +37,9 @@ export default function ProfilePage() {
       return;
     }
 
+    // Don't re-fetch if user is actively editing the form
+    if (editing) return;
+
     // Fetch fresh user data from backend
     const fetchUserProfile = async () => {
       try {
@@ -133,7 +136,7 @@ export default function ProfilePage() {
         console.error('Failed to parse LinkedIn data:', err);
       }
     }
-  }, [user, router, authLoading]);
+  }, [user, router, authLoading, editing]);
 
   const handleLinkedInImport = () => {
     const clientId = process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID;
