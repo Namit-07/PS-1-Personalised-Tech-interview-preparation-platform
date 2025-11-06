@@ -1,6 +1,6 @@
-# 🚀 Personalized Tech Interview Preparation Platform
+# 🚀 SkillForge.AI
 
-> **Built for 36-Hour Hackathon** | An AI-powered interview prep platform with role-based features for students and recruiters
+
 
 ## 🎯 The Problem
 
@@ -764,13 +764,12 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 **Developer**: Namit Tickoo ([@Namit-07](https://github.com/Namit-07))
 
-Built with ❤️ for Programming Pathshala Hackathon 2025
+Built with ❤️ for Community
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **Programming Pathshala** for the hackathon opportunity
 - **Google Gemini AI** for intelligent assistance capabilities
 - **Next.js & Vercel** teams for amazing React framework
 - **MongoDB** for flexible document database
