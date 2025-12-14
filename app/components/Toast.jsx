@@ -66,7 +66,9 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
         >
           {styles.icon}
         </motion.div>
-        <p className="text-white font-medium flex-1">{message}</p>
+        <p className="text-white font-medium flex-1">
+          {typeof message === 'string' ? message : message?.message || 'Something happened'}
+        </p>
         <button
           onClick={onClose}
           className="text-white/80 hover:text-white transition-colors"

@@ -48,7 +48,11 @@ export default function SignupPage() {
       // Redirect to role selection for new users
       router.push('/role-selection');
     } else {
-      setError(result.error);
+      // Ensure error is always a string
+      const errorMessage = typeof result.error === 'string' 
+        ? result.error 
+        : result.error?.message || 'Signup failed. Please try again.';
+      setError(errorMessage);
       setLoading(false);
     }
   };

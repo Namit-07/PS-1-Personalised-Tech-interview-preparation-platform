@@ -146,7 +146,11 @@ export default function AIChat({ problemContext }) {
       });
 
       // Add AI response
-      const aiReply = response.data?.response?.reply || response.data?.reply || "Got a response!";
+      let aiReply = response.data?.response?.reply || response.data?.reply || response.data?.message || "Got a response!";
+      // Ensure aiReply is a string
+      if (typeof aiReply !== 'string') {
+        aiReply = JSON.stringify(aiReply);
+      }
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: aiReply
@@ -230,7 +234,9 @@ export default function AIChat({ problemContext }) {
                       : 'bg-gray-800 text-gray-100 border border-gray-700'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
+                  </p>
                 </div>
               </div>
             ))}

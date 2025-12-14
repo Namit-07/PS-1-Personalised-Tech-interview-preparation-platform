@@ -170,7 +170,7 @@ export default function ProgressPage() {
                       <p className="font-medium">{item.problemId?.title || 'Unknown Problem'}</p>
                       <p className="text-sm text-gray-400">
                         {item.attempts?.length || 0} attempt{item.attempts?.length !== 1 ? 's' : ''} • 
-                        Last: {new Date(item.lastAttemptAt).toLocaleDateString()}
+                        Last: {item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                   </div>

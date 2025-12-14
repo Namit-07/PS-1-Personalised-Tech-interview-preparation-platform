@@ -53,7 +53,11 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } else {
-      setError(result.error);
+      // Ensure error is always a string
+      const errorMessage = typeof result.error === 'string' 
+        ? result.error 
+        : result.error?.message || 'Login failed. Please try again.';
+      setError(errorMessage);
       setLoading(false);
     }
   };
