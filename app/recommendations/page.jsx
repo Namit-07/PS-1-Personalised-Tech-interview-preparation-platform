@@ -29,9 +29,9 @@ export default function RecommendationsPage() {
 
       console.log('Recommendations response:', recsRes);
       setRecommendations(recsRes.problems || recsRes || []);
-      setBasedOn(recsRes.basedOn);
-      setInsights(recsRes.insights);
-      setTopics(topicsRes.data.proficiencies || []);
+      setBasedOn(recsRes.basedOn || null);
+      setInsights(recsRes.insights || null);
+      setTopics(topicsRes.data?.proficiencies || topicsRes?.proficiencies || []);
     } catch (error) {
       console.error('Error fetching recommendations:', error);
     } finally {
@@ -130,13 +130,13 @@ export default function RecommendationsPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Weak Topics */}
-              {insights.weakTopics && insights.weakTopics.length > 0 && (
+              {insights.weakTopics && Array.isArray(insights.weakTopics) && insights.weakTopics.length > 0 && (
                 <div className="bg-red-900/20 rounded-xl p-4 border border-red-500/30">
                   <p className="text-sm text-red-400 font-semibold mb-2">📉 Needs Improvement</p>
                   <div className="flex flex-wrap gap-1">
-                    {insights.weakTopics.map(topic => (
-                      <span key={topic} className="px-2 py-1 bg-red-500/20 text-red-300 rounded-lg text-xs">
-                        {topic}
+                    {insights.weakTopics.map((topic, index) => (
+                      <span key={typeof topic === 'string' ? topic : index} className="px-2 py-1 bg-red-500/20 text-red-300 rounded-lg text-xs">
+                        {typeof topic === 'string' ? topic : topic?.topicName || topic?.name || 'Unknown'}
                       </span>
                     ))}
                   </div>
@@ -144,13 +144,13 @@ export default function RecommendationsPage() {
               )}
 
               {/* Strong Topics */}
-              {insights.strongTopics && insights.strongTopics.length > 0 && (
+              {insights.strongTopics && Array.isArray(insights.strongTopics) && insights.strongTopics.length > 0 && (
                 <div className="bg-green-900/20 rounded-xl p-4 border border-green-500/30">
                   <p className="text-sm text-green-400 font-semibold mb-2">💪 Your Strengths</p>
                   <div className="flex flex-wrap gap-1">
-                    {insights.strongTopics.map(topic => (
-                      <span key={topic} className="px-2 py-1 bg-green-500/20 text-green-300 rounded-lg text-xs">
-                        {topic}
+                    {insights.strongTopics.map((topic, index) => (
+                      <span key={typeof topic === 'string' ? topic : index} className="px-2 py-1 bg-green-500/20 text-green-300 rounded-lg text-xs">
+                        {typeof topic === 'string' ? topic : topic?.topicName || topic?.name || 'Unknown'}
                       </span>
                     ))}
                   </div>
@@ -160,7 +160,7 @@ export default function RecommendationsPage() {
               {/* Next Milestone */}
               <div className="bg-blue-900/20 rounded-xl p-4 border border-blue-500/30">
                 <p className="text-sm text-blue-400 font-semibold mb-2">🎯 Next Milestone</p>
-                <p className="text-blue-200 text-sm">{insights.nextMilestone}</p>
+                <p className="text-blue-200 text-sm">{String(insights.nextMilestone || 'Keep solving problems!')}</p>
               </div>
             </div>
 
@@ -169,7 +169,7 @@ export default function RecommendationsPage() {
               <div className="mt-4 p-3 bg-amber-900/20 rounded-xl border border-amber-500/30">
                 <p className="text-amber-300 text-sm flex items-center gap-2">
                   <span>💡</span>
-                  {insights.improvementAreas}
+                  {String(insights.improvementAreas)}
                 </p>
               </div>
             )}
@@ -377,15 +377,15 @@ export default function RecommendationsPage() {
 
                       {/* Topics Pills */}
                       <div className="flex flex-wrap gap-2">
-                        {problem.topics.slice(0, 4).map(topic => (
+                        {problem.topics && Array.isArray(problem.topics) && problem.topics.slice(0, 4).map((topic, idx) => (
                           <span
-                            key={topic}
+                            key={typeof topic === 'string' ? topic : idx}
                             className="px-3 py-1.5 bg-gray-800/50 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 hover:border-gray-600 transition-colors"
                           >
-                            {topic}
+                            {typeof topic === 'string' ? topic : String(topic)}
                           </span>
                         ))}
-                        {problem.topics.length > 4 && (
+                        {problem.topics && problem.topics.length > 4 && (
                           <span className="px-3 py-1.5 bg-gray-800/50 text-gray-400 rounded-lg text-xs">
                             +{problem.topics.length - 4} more
                           </span>
@@ -401,8 +401,9 @@ export default function RecommendationsPage() {
                       <div>
                         <p className="text-sm font-semibold text-blue-300 mb-1">Why This Problem?</p>
                         <p className="text-sm text-gray-300 leading-relaxed">
-                          {problem.recommendReason || (() => {
-                            const matchedTopics = problem.topics.filter(topic => 
+                          {problem.recommendReason ? String(problem.recommendReason) : (() => {
+                            const problemTopics = Array.isArray(problem.topics) ? problem.topics : [];
+                            const matchedTopics = problemTopics.filter(topic => 
                               basedOn?.practiceTopics?.includes(topic)
                             );
                             const matchedCompanies = problem.companies?.filter(company =>
@@ -415,8 +416,8 @@ export default function RecommendationsPage() {
                               return `Strengthens ${matchedTopics.join(', ')} - your practice topics 📚`;
                             } else if (matchedCompanies && matchedCompanies.length > 0) {
                               return `Asked by ${matchedCompanies.join(', ')} - your target ${matchedCompanies.length > 1 ? 'companies' : 'company'} 🏢`;
-                            } else if (weakTopics.some(t => problem.topics.includes(t.topicName))) {
-                              const weakTopic = problem.topics.find(topic => 
+                            } else if (weakTopics.some(t => problemTopics.includes(t.topicName))) {
+                              const weakTopic = problemTopics.find(topic => 
                                 weakTopics.some(wt => wt.topicName === topic)
                               );
                               return `Helps improve ${weakTopic} - an area that needs attention 💪`;

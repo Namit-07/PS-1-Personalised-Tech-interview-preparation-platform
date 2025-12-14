@@ -427,6 +427,7 @@ router.get('/user/recommended', protect, async (req, res) => {
         targetCompanies: req.user.targetCompany || [],
         practiceTopics: req.user.practiceTopics || [],
         experienceLevel: req.user.experienceLevel || 'Not set',
+        domain: req.user.domain || null,
         weakTopics: allWeakTopics,
         recommendedDifficulty: targetDifficulties[0]
       }
