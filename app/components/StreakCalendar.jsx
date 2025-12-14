@@ -1,22 +1,93 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import CalendarHeatmap from 'react-calendar-heatmap';
-import 'react-calendar-heatmap/dist/styles.css';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 export default function StreakCalendar({ activityData = [] }) {
-  const [tooltipData, setTooltipData] = useState(null);
+  const [hoveredDay, setHoveredDay] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Calculate date range (last 365 days)
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setFullYear(startDate.getFullYear() - 1);
+  // Detect dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    checkDarkMode();
+    
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    
+    return () => observer.disconnect();
+  }, []);
 
-  // Calculate current streak
-  const calculateStreak = () => {
-    const sortedData = [...activityData].sort((a, b) => new Date(b.date) - new Date(a.date));
-    let streak = 0;
+  // GitHub uses exactly 53 weeks
+  const weeks = 53;
+  const cellSize = 14;
+  const cellGap = 4;
+  const dayLabelWidth = 36;
+  const headerHeight = 24;
+
+  // Generate calendar data for the last 53 weeks
+  const calendarData = useMemo(() => {
+    const today = new Date();
+    const data = [];
+    
+    // Create a map for quick lookup of activity data
+    const activityMap = new Map();
+    activityData.forEach(item => {
+      const dateKey = new Date(item.date).toISOString().split('T')[0];
+      activityMap.set(dateKey, item.count || 0);
+    });
+
+    // Calculate start date (53 weeks ago, starting from Sunday)
+    const endDate = new Date(today);
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - (weeks * 7) + (7 - today.getDay()));
+
+    // Generate all days
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dateKey = currentDate.toISOString().split('T')[0];
+      data.push({
+        date: new Date(currentDate),
+        dateKey,
+        count: activityMap.get(dateKey) || 0,
+        dayOfWeek: currentDate.getDay(),
+        weekIndex: Math.floor((currentDate - startDate) / (7 * 24 * 60 * 60 * 1000))
+      });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return data;
+  }, [activityData]);
+
+  // Get month labels
+  const monthLabels = useMemo(() => {
+    const labels = [];
+    let currentMonth = -1;
+    
+    calendarData.forEach((day) => {
+      const month = day.date.getMonth();
+      if (month !== currentMonth && day.dayOfWeek === 0) {
+        labels.push({
+          month: day.date.toLocaleDateString('en-US', { month: 'short' }),
+          weekIndex: day.weekIndex
+        });
+        currentMonth = month;
+      }
+    });
+
+    return labels;
+  }, [calendarData]);
+
+  // Calculate streak stats
+  const stats = useMemo(() => {
+    const sortedData = [...activityData]
+      .filter(d => d.count > 0)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Current streak
+    let currentStreak = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -29,264 +100,209 @@ export default function StreakCalendar({ activityData = [] }) {
       expectedDate.setHours(0, 0, 0, 0);
 
       if (activityDate.getTime() === expectedDate.getTime()) {
-        streak++;
+        currentStreak++;
+      } else if (i === 0 && activityDate.getTime() === expectedDate.getTime() - 86400000) {
+        expectedDate.setDate(expectedDate.getDate() - 1);
+        if (activityDate.getTime() === expectedDate.getTime()) {
+          currentStreak++;
+        } else {
+          break;
+        }
       } else {
         break;
       }
     }
-    return streak;
-  };
 
-  // Calculate longest streak
-  const calculateLongestStreak = () => {
-    if (activityData.length === 0) return 0;
-    
-    const sortedData = [...activityData].sort((a, b) => new Date(a.date) - new Date(b.date));
-    let maxStreak = 1;
-    let currentStreak = 1;
+    // Longest streak
+    let longestStreak = 0;
+    let tempStreak = 0;
+    const chronological = [...activityData]
+      .filter(d => d.count > 0)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    for (let i = 1; i < sortedData.length; i++) {
-      const prevDate = new Date(sortedData[i - 1].date);
-      const currDate = new Date(sortedData[i].date);
-      const diffDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) {
-        currentStreak++;
-        maxStreak = Math.max(maxStreak, currentStreak);
+    for (let i = 0; i < chronological.length; i++) {
+      if (i === 0) {
+        tempStreak = 1;
       } else {
-        currentStreak = 1;
+        const prevDate = new Date(chronological[i - 1].date);
+        const currDate = new Date(chronological[i].date);
+        const diffDays = Math.round((currDate - prevDate) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          tempStreak++;
+        } else {
+          tempStreak = 1;
+        }
       }
+      longestStreak = Math.max(longestStreak, tempStreak);
     }
-    return maxStreak;
+
+    // Total contributions
+    const totalContributions = activityData.reduce((sum, d) => sum + (d.count || 0), 0);
+
+    return { currentStreak, longestStreak, totalContributions };
+  }, [activityData]);
+
+  // Get GitHub-style color based on contribution count
+  const getContributionColor = (count) => {
+    if (count === 0) {
+      return isDarkMode ? '#161b22' : '#ebedf0';
+    }
+    if (isDarkMode) {
+      if (count <= 2) return '#0e4429';
+      if (count <= 5) return '#006d32';
+      if (count <= 8) return '#26a641';
+      return '#39d353';
+    } else {
+      if (count <= 2) return '#9be9a8';
+      if (count <= 5) return '#40c463';
+      if (count <= 8) return '#30a14e';
+      return '#216e39';
+    }
   };
 
-  // Get color based on activity count
-  const getColor = (value) => {
-    if (!value || value.count === 0) return 'color-empty';
-    if (value.count <= 2) return 'color-scale-1';
-    if (value.count <= 5) return 'color-scale-2';
-    if (value.count <= 8) return 'color-scale-3';
-    return 'color-scale-4';
+  const handleMouseEnter = (day, event) => {
+    const rect = event.target.getBoundingClientRect();
+    const containerRect = event.target.closest('.contribution-graph').getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.left - containerRect.left + cellSize / 2,
+      y: rect.top - containerRect.top - 10
+    });
+    setHoveredDay(day);
   };
 
-  const currentStreak = calculateStreak();
-  const longestStreak = calculateLongestStreak();
-  const totalDays = activityData.length;
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const svgWidth = dayLabelWidth + (weeks * (cellSize + cellGap));
+  const svgHeight = headerHeight + (7 * (cellSize + cellGap));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative"
-    >
-      {/* Header Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border border-gray-800"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">🔥</span>
-            <div>
-              <p className="text-gray-400 text-sm">Current Streak</p>
-              <p className="text-4xl font-black bg-gradient-to-r from-orange-400 to-red-400 text-transparent bg-clip-text">
-                {currentStreak}
-              </p>
-            </div>
-          </div>
-          <p className="text-gray-500 text-sm">days in a row</p>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border border-gray-800"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">⭐</span>
-            <div>
-              <p className="text-gray-400 text-sm">Longest Streak</p>
-              <p className="text-4xl font-black bg-gradient-to-r from-yellow-400 to-amber-400 text-transparent bg-clip-text">
-                {longestStreak}
-              </p>
-            </div>
-          </div>
-          <p className="text-gray-500 text-sm">days record</p>
-        </motion.div>
-
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border border-gray-800"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">📅</span>
-            <div>
-              <p className="text-gray-400 text-sm">Total Active Days</p>
-              <p className="text-4xl font-black bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text">
-                {totalDays}
-              </p>
-            </div>
-          </div>
-          <p className="text-gray-500 text-sm">this year</p>
-        </motion.div>
+    <div className="bg-white dark:bg-[#0d1117] rounded-lg border border-slate-200 dark:border-[#30363d] overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-slate-200 dark:border-[#30363d] flex items-center justify-between">
+        <h3 className="text-base font-semibold text-slate-800 dark:text-[#c9d1d9]">
+          {stats.totalContributions} contributions in the last year
+        </h3>
       </div>
 
-      {/* Calendar Heatmap */}
-      <div className="bg-[#0d1117] rounded-2xl p-8 border border-gray-800">
-        <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-          <span>📊</span> Activity Heatmap
-        </h3>
-        
-        <div className="calendar-container">
-          <CalendarHeatmap
-            startDate={startDate}
-            endDate={endDate}
-            values={activityData}
-            classForValue={getColor}
-            tooltipDataAttrs={(value) => {
-              if (!value || !value.date) {
-                return { 'data-tip': 'No activity' };
-              }
-              return {
-                'data-tip': `${value.count} problems on ${new Date(value.date).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}`
-              };
-            }}
-            showWeekdayLabels
-            onClick={(value) => {
-              if (value) {
-                setTooltipData(value);
-              }
-            }}
-          />
-        </div>
+      {/* Contribution Graph */}
+      <div className="p-5 overflow-x-auto">
+        <div className="contribution-graph relative" style={{ minWidth: svgWidth }}>
+          {/* Tooltip */}
+          {hoveredDay && (
+            <div
+              className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+              style={{ left: tooltipPosition.x, top: tooltipPosition.y }}
+            >
+              <div className="bg-[#24292f] dark:bg-[#6e7681] text-white text-xs py-2 px-3 rounded-md shadow-lg whitespace-nowrap">
+                <strong>
+                  {hoveredDay.count === 0 
+                    ? 'No contributions' 
+                    : `${hoveredDay.count} contribution${hoveredDay.count !== 1 ? 's' : ''}`}
+                </strong>
+                <span className="text-slate-300 dark:text-slate-200"> on {formatDate(hoveredDay.date)}</span>
+                <div className="absolute left-1/2 transform -translate-x-1/2 top-full">
+                  <div className="border-4 border-transparent border-t-[#24292f] dark:border-t-[#6e7681]"></div>
+                </div>
+              </div>
+            </div>
+          )}
 
+          <svg width={svgWidth} height={svgHeight} className="block">
+            {/* Month labels */}
+            <g>
+              {monthLabels.map((label, i) => (
+                <text
+                  key={i}
+                  x={dayLabelWidth + (label.weekIndex * (cellSize + cellGap)) + cellSize / 2}
+                  y={14}
+                  className="fill-slate-500 dark:fill-[#8b949e]"
+                  fontSize="12"
+                  textAnchor="start"
+                >
+                  {label.month}
+                </text>
+              ))}
+            </g>
+
+            {/* Day labels */}
+            <g>
+              {[1, 3, 5].map((dayIndex) => (
+                <text
+                  key={dayIndex}
+                  x={0}
+                  y={headerHeight + (dayIndex * (cellSize + cellGap)) + cellSize - 1}
+                  className="fill-slate-500 dark:fill-[#8b949e]"
+                  fontSize="12"
+                >
+                  {dayLabels[dayIndex]}
+                </text>
+              ))}
+            </g>
+
+            {/* Contribution cells */}
+            <g>
+              {calendarData.map((day) => (
+                <rect
+                  key={day.dateKey}
+                  x={dayLabelWidth + (day.weekIndex * (cellSize + cellGap))}
+                  y={headerHeight + (day.dayOfWeek * (cellSize + cellGap))}
+                  width={cellSize}
+                  height={cellSize}
+                  rx={3}
+                  ry={3}
+                  className="cursor-pointer"
+                  fill={getContributionColor(day.count)}
+                  onMouseEnter={(e) => handleMouseEnter(day, e)}
+                  onMouseLeave={() => setHoveredDay(null)}
+                  style={{
+                    outline: hoveredDay?.dateKey === day.dateKey ? '2px solid #1f6feb' : 'none',
+                    outlineOffset: '-1px'
+                  }}
+                />
+              ))}
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      {/* Footer with legend and stats */}
+      <div className="px-5 py-4 border-t border-slate-200 dark:border-[#30363d] flex flex-wrap items-center justify-between gap-4">
         {/* Legend */}
-        <div className="flex items-center justify-end gap-3 mt-6 text-sm text-gray-400">
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-[#8b949e]">
           <span>Less</span>
           <div className="flex gap-1">
-            <div className="w-3 h-3 rounded-sm bg-[#1c1f26] border border-gray-700"></div>
-            <div className="w-3 h-3 rounded-sm bg-[#0e4429]"></div>
-            <div className="w-3 h-3 rounded-sm bg-[#006d32]"></div>
-            <div className="w-3 h-3 rounded-sm bg-[#26a641]"></div>
-            <div className="w-3 h-3 rounded-sm bg-[#39d353]"></div>
+            <div className="w-[14px] h-[14px] rounded bg-[#ebedf0] dark:bg-[#161b22]"></div>
+            <div className="w-[14px] h-[14px] rounded bg-[#9be9a8] dark:bg-[#0e4429]"></div>
+            <div className="w-[14px] h-[14px] rounded bg-[#40c463] dark:bg-[#006d32]"></div>
+            <div className="w-[14px] h-[14px] rounded bg-[#30a14e] dark:bg-[#26a641]"></div>
+            <div className="w-[14px] h-[14px] rounded bg-[#216e39] dark:bg-[#39d353]"></div>
           </div>
           <span>More</span>
         </div>
 
-        {/* Motivational Message */}
-        {currentStreak > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-6 p-4 rounded-xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30"
-          >
-            <p className="text-orange-400 font-medium flex items-center gap-2">
-              <span>🔥</span>
-              {currentStreak >= 7 ? (
-                <span>Amazing! You're on fire! Keep this {currentStreak}-day streak going! 🚀</span>
-              ) : currentStreak >= 3 ? (
-                <span>Great job! {currentStreak} days in a row! Don't break the chain! 💪</span>
-              ) : (
-                <span>You're building momentum! {currentStreak} day streak - keep it up! ⚡</span>
-              )}
-            </p>
-          </motion.div>
-        )}
-
-        {currentStreak === 0 && totalDays > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-6 p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30"
-          >
-            <p className="text-blue-400 font-medium flex items-center gap-2">
-              <span>💡</span>
-              <span>Start your streak today! Solve at least one problem to get started! 🎯</span>
-            </p>
-          </motion.div>
-        )}
+        {/* Stats */}
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-500">🔥</span>
+            <span className="text-slate-600 dark:text-[#8b949e]">Current streak:</span>
+            <span className="font-semibold text-slate-800 dark:text-[#c9d1d9]">{stats.currentStreak} days</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-yellow-500">⭐</span>
+            <span className="text-slate-600 dark:text-[#8b949e]">Longest streak:</span>
+            <span className="font-semibold text-slate-800 dark:text-[#c9d1d9]">{stats.longestStreak} days</span>
+          </div>
+        </div>
       </div>
-
-      {/* Custom Styles */}
-      <style jsx global>{`
-        .calendar-container {
-          font-size: 12px;
-        }
-
-        .react-calendar-heatmap {
-          width: 100%;
-        }
-
-        .react-calendar-heatmap text {
-          fill: #9ca3af;
-          font-size: 10px;
-        }
-
-      .react-calendar-heatmap .color-empty {
-        fill: #1c1f26;
-        stroke: #0d1117;
-        stroke-width: 3px;
-        rx: 3;
-      }
-
-      .react-calendar-heatmap .color-scale-1 {
-        fill: #0e4429;
-        stroke: #0d1117;
-        stroke-width: 3px;
-        rx: 3;
-      }
-
-      .react-calendar-heatmap .color-scale-2 {
-        fill: #006d32;
-        stroke: #0d1117;
-        stroke-width: 3px;
-        rx: 3;
-      }
-
-      .react-calendar-heatmap .color-scale-3 {
-        fill: #26a641;
-        stroke: #0d1117;
-        stroke-width: 3px;
-        rx: 3;
-      }
-
-      .react-calendar-heatmap .color-scale-4 {
-        fill: #39d353;
-        stroke: #0d1117;
-        stroke-width: 3px;
-        rx: 3;
-      }        .react-calendar-heatmap rect:hover {
-          stroke: #ffffff;
-          stroke-width: 2px;
-          opacity: 1;
-          cursor: pointer;
-        }
-
-        .react-calendar-heatmap .react-calendar-heatmap-month-label {
-          fill: #d1d5db;
-          font-size: 12px;
-          font-weight: 500;
-        }
-
-        .react-calendar-heatmap .react-calendar-heatmap-weekday-label {
-          fill: #9ca3af;
-          font-size: 11px;
-        }
-
-        .react-calendar-heatmap rect {
-          rx: 2;
-          ry: 2;
-        }
-
-        .react-calendar-heatmap svg {
-          overflow: visible;
-        }
-      `}</style>
-    </motion.div>
+    </div>
   );
 }

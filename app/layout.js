@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "./lib/AuthContext";
 import { ThemeProvider } from "./lib/ThemeContext";
 import { ActivityProvider } from "./lib/ActivityContext";
+import AppLayout from "./components/AppLayout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,14 +22,16 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
           <AuthProvider>
             <ActivityProvider>
-              {children}
+              <AppLayout>
+                {children}
+              </AppLayout>
             </ActivityProvider>
           </AuthProvider>
         </ThemeProvider>

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { problemsAPI, progressAPI } from '../lib/api';
-import Navbar from '../components/Navbar';
 import { motion } from 'framer-motion';
 
 export default function RecommendationsPage() {
@@ -14,6 +13,7 @@ export default function RecommendationsPage() {
   const [basedOn, setBasedOn] = useState(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [selectedTopic, setSelectedTopic] = useState('All');
+  const [insights, setInsights] = useState(null);
 
   useEffect(() => {
     fetchRecommendations();
@@ -30,6 +30,7 @@ export default function RecommendationsPage() {
       console.log('Recommendations response:', recsRes);
       setRecommendations(recsRes.problems || recsRes || []);
       setBasedOn(recsRes.basedOn);
+      setInsights(recsRes.insights);
       setTopics(topicsRes.data.proficiencies || []);
     } catch (error) {
       console.error('Error fetching recommendations:', error);
@@ -40,15 +41,14 @@ export default function RecommendationsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
-        <Navbar />
+      <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
             <div className="relative">
               <div className="w-20 h-20 border-4 border-blue-500/30 rounded-full"></div>
               <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0"></div>
             </div>
-            <p className="text-gray-400 mt-6 text-lg">Curating your personalized journey...</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-6 text-lg">Curating your personalized journey...</p>
           </div>
         </div>
       </div>
@@ -68,10 +68,8 @@ export default function RecommendationsPage() {
   const allTopics = [...new Set(recommendations.flatMap(p => p.topics))];
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100">
-      <Navbar />
-      
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-gray-900 dark:text-gray-100">
+      <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         {/* Hero Header with Stats */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -111,6 +109,72 @@ export default function RecommendationsPage() {
             </div>
           </div>
         </motion.div>
+
+        {/* AI Insights Panel - NEW */}
+        {insights && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-8 bg-gradient-to-r from-emerald-900/20 via-teal-900/20 to-cyan-900/20 backdrop-blur-xl border border-emerald-500/30 rounded-3xl p-6 shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                <span className="text-xl">🧠</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">AI Insights</h2>
+                <p className="text-gray-400 text-sm">Based on your performance analysis</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Weak Topics */}
+              {insights.weakTopics && insights.weakTopics.length > 0 && (
+                <div className="bg-red-900/20 rounded-xl p-4 border border-red-500/30">
+                  <p className="text-sm text-red-400 font-semibold mb-2">📉 Needs Improvement</p>
+                  <div className="flex flex-wrap gap-1">
+                    {insights.weakTopics.map(topic => (
+                      <span key={topic} className="px-2 py-1 bg-red-500/20 text-red-300 rounded-lg text-xs">
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Strong Topics */}
+              {insights.strongTopics && insights.strongTopics.length > 0 && (
+                <div className="bg-green-900/20 rounded-xl p-4 border border-green-500/30">
+                  <p className="text-sm text-green-400 font-semibold mb-2">💪 Your Strengths</p>
+                  <div className="flex flex-wrap gap-1">
+                    {insights.strongTopics.map(topic => (
+                      <span key={topic} className="px-2 py-1 bg-green-500/20 text-green-300 rounded-lg text-xs">
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Next Milestone */}
+              <div className="bg-blue-900/20 rounded-xl p-4 border border-blue-500/30">
+                <p className="text-sm text-blue-400 font-semibold mb-2">🎯 Next Milestone</p>
+                <p className="text-blue-200 text-sm">{insights.nextMilestone}</p>
+              </div>
+            </div>
+
+            {/* Improvement Tip */}
+            {insights.improvementAreas && (
+              <div className="mt-4 p-3 bg-amber-900/20 rounded-xl border border-amber-500/30">
+                <p className="text-amber-300 text-sm flex items-center gap-2">
+                  <span>💡</span>
+                  {insights.improvementAreas}
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Personalization Banner - Modern Glassmorphism */}
         {basedOn && (
@@ -335,9 +399,9 @@ export default function RecommendationsPage() {
                     <div className="flex items-start gap-3">
                       <span className="text-2xl">💡</span>
                       <div>
-                        <p className="text-sm font-semibold text-blue-300 mb-1">Perfect Match</p>
+                        <p className="text-sm font-semibold text-blue-300 mb-1">Why This Problem?</p>
                         <p className="text-sm text-gray-300 leading-relaxed">
-                          {(() => {
+                          {problem.recommendReason || (() => {
                             const matchedTopics = problem.topics.filter(topic => 
                               basedOn?.practiceTopics?.includes(topic)
                             );

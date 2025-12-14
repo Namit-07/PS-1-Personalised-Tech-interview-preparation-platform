@@ -110,23 +110,7 @@ export default function ProblemsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 py-8 px-4">
-      {/* Navigation Bar */}
-      <div className="max-w-7xl mx-auto mb-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
-          >
-            <span className="text-2xl">←</span>
-            <span>Back to Dashboard</span>
-          </button>
-          {user && (
-            <span className="text-gray-300">Welcome, {user.name}</span>
-          )}
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-purple-900 dark:to-gray-900 py-6 md:py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

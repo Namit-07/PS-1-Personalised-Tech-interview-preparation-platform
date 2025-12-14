@@ -84,6 +84,18 @@ Keep responses concise (2-3 short paragraphs max), friendly, and encouraging.
     } catch (aiError) {
       console.error('Gemini API error:', aiError);
       
+      // Handle rate limiting specifically
+      if (aiError.status === 429 || aiError.message?.includes('429') || aiError.message?.includes('RESOURCE_EXHAUSTED')) {
+        return res.json({
+          success: true,
+          response: {
+            reply: "⏳ The AI is taking a quick breather (rate limit reached).\n\nPlease wait a moment and try again. In the meantime, here are some tips:\n\n• Break down the problem into smaller parts\n• Think about edge cases\n• Consider the time complexity you're aiming for\n\nI'll be back in ~30 seconds!",
+            timestamp: Date.now(),
+            rateLimited: true
+          }
+        });
+      }
+      
       // Smart fallback
       const fallbackResponses = {
         'approach': "Great question! 🤔\n\nHere's a general approach:\n1. Understand the problem constraints\n2. Think about the data structures that could help\n3. Consider the time complexity you're aiming for\n4. Start with a brute force solution, then optimize\n\nFor this specific problem, consider what data structure gives you O(1) lookup time!",

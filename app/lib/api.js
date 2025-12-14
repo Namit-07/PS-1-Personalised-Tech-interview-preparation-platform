@@ -59,7 +59,8 @@ export const problemsAPI = {
   submit: (data) => api.post('/problems/submit', data),
   getRecommended: async () => {
     const response = await api.get('/problems/user/recommended');
-    return response.data.problems || [];
+    // Return full response with problems, insights, and basedOn
+    return response.data;
   },
 };
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Navbar from '../../components/Navbar';
 
 const csTopics = [
   {
@@ -92,10 +91,8 @@ const csTopics = [
 
 export default function CSFundamentalsPage() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-950 via-indigo-950 to-gray-950">
-      <Navbar />
-      
-      <div className="max-w-7xl mx-auto px-4 py-12">
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br dark:from-gray-950 dark:via-indigo-950 dark:to-gray-950">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

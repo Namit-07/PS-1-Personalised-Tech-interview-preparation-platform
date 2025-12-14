@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Problem = require('../models/Problem');
 const UserProgress = require('../models/UserProgress');
+const TopicProficiency = require('../models/TopicProficiency');
 const { protect } = require('../middleware/auth');
 
 // @route   GET /api/problems
@@ -178,109 +179,256 @@ router.post('/submit', protect, async (req, res) => {
 });
 
 // @route   GET /api/problems/recommended
-// @desc    Get recommended problems for user based on onboarding preferences
+// @desc    Get SMART recommendations based on user performance, weak areas, and spaced repetition
 // @access  Private
 router.get('/user/recommended', protect, async (req, res) => {
   try {
-    console.log('Getting recommendations for user:', req.user.email);
-    console.log('User preferences:', {
-      targetCompany: req.user.targetCompany,
-      practiceTopics: req.user.practiceTopics,
-      experienceLevel: req.user.experienceLevel,
-      domain: req.user.domain
-    });
+    console.log('🧠 Smart Recommendations for:', req.user.email);
 
-    // Get user's solved problems
-    const solvedProblems = await UserProgress.find({
-      userId: req.user._id,
-      status: 'Solved'
-    }).select('problemId');
+    // ============================================
+    // STEP 1: Gather User Performance Data
+    // ============================================
+    
+    // Get ALL user progress (solved, attempted, failed)
+    const allProgress = await UserProgress.find({ userId: req.user._id });
+    
+    const solvedProblems = allProgress.filter(p => p.status === 'Solved');
+    const attemptedProblems = allProgress.filter(p => p.status === 'Attempted');
+    const solvedIds = solvedProblems.map(p => p.problemId.toString());
+    const attemptedIds = attemptedProblems.map(p => p.problemId.toString());
 
-    const solvedIds = solvedProblems.map(p => p.problemId);
+    // Get topic proficiency data
+    const topicProficiency = await TopicProficiency.find({ userId: req.user._id });
+    
+    // ============================================
+    // STEP 2: Analyze Weak Areas
+    // ============================================
+    
+    // Find weak topics (proficiency < 60%)
+    const weakTopics = topicProficiency
+      .filter(t => t.proficiencyScore < 60)
+      .sort((a, b) => a.proficiencyScore - b.proficiencyScore)
+      .map(t => t.topic);
 
-    // Build smart query based on onboarding data
-    let query = {
-      _id: { $nin: solvedIds }
-    };
-
-    // Priority 1: Match target companies (if user selected any)
-    if (req.user.targetCompany && req.user.targetCompany.length > 0) {
-      query.companies = { $in: req.user.targetCompany };
-    }
-
-    // Priority 2: Match practice topics (if user selected any)
-    if (req.user.practiceTopics && req.user.practiceTopics.length > 0) {
-      query.topics = { $in: req.user.practiceTopics };
-    }
-
-    // Priority 3: Adjust difficulty based on experience level
-    if (req.user.experienceLevel) {
-      if (req.user.experienceLevel === 'Beginner') {
-        query.difficulty = { $in: ['Easy', 'Medium'] };
-      } else if (req.user.experienceLevel === 'Intermediate') {
-        query.difficulty = { $in: ['Medium', 'Hard'] };
-      } else if (req.user.experienceLevel === 'Advanced') {
-        query.difficulty = { $in: ['Medium', 'Hard'] };
-      }
-    }
-
-    console.log('Recommendation query:', JSON.stringify(query, null, 2));
-
-    // Get recommendations with the built query
-    let recommendations = await Problem.find(query)
-      .select('-testCases -solution.code')
-      .limit(15)
-      .sort({ 'metadata.frequency': -1 });
-
-    // If no recommendations found with strict filters, relax them
-    if (recommendations.length < 5) {
-      console.log('Not enough recommendations, relaxing filters...');
-      
-      // Try with just topics and difficulty
-      const relaxedQuery = {
-        _id: { $nin: solvedIds }
-      };
-
-      if (req.user.practiceTopics && req.user.practiceTopics.length > 0) {
-        relaxedQuery.topics = { $in: req.user.practiceTopics };
-      }
-
-      if (req.user.experienceLevel) {
-        if (req.user.experienceLevel === 'Beginner') {
-          relaxedQuery.difficulty = { $in: ['Easy', 'Medium'] };
-        } else if (req.user.experienceLevel === 'Intermediate') {
-          relaxedQuery.difficulty = { $in: ['Medium', 'Hard'] };
-        } else if (req.user.experienceLevel === 'Advanced') {
-          relaxedQuery.difficulty = { $in: ['Medium', 'Hard'] };
+    // Find topics with low solve rate from progress
+    const topicStats = {};
+    for (const progress of allProgress) {
+      const problem = await Problem.findById(progress.problemId).select('topics');
+      if (problem && problem.topics) {
+        for (const topic of problem.topics) {
+          if (!topicStats[topic]) {
+            topicStats[topic] = { solved: 0, attempted: 0, total: 0 };
+          }
+          topicStats[topic].total++;
+          if (progress.status === 'Solved') topicStats[topic].solved++;
+          else topicStats[topic].attempted++;
         }
       }
-
-      recommendations = await Problem.find(relaxedQuery)
-        .select('-testCases -solution.code')
-        .limit(15)
-        .sort({ 'metadata.frequency': -1 });
     }
 
-    // If still not enough, just get popular unsolved problems
-    if (recommendations.length < 5) {
-      console.log('Still not enough, getting popular problems...');
-      recommendations = await Problem.find({ _id: { $nin: solvedIds } })
-        .select('-testCases -solution.code')
-        .limit(15)
-        .sort({ 'metadata.frequency': -1 });
+    // Calculate solve rates per topic
+    const topicSolveRates = Object.entries(topicStats)
+      .map(([topic, stats]) => ({
+        topic,
+        solveRate: stats.total > 0 ? (stats.solved / stats.total) * 100 : 0,
+        total: stats.total
+      }))
+      .filter(t => t.total >= 2) // Only topics with enough data
+      .sort((a, b) => a.solveRate - b.solveRate);
+
+    const strugglingTopics = topicSolveRates
+      .filter(t => t.solveRate < 50)
+      .map(t => t.topic);
+
+    // Combine weak topics from both sources
+    const allWeakTopics = [...new Set([...weakTopics, ...strugglingTopics])];
+
+    console.log('📊 Weak topics identified:', allWeakTopics);
+
+    // ============================================
+    // STEP 3: Determine Optimal Difficulty
+    // ============================================
+    
+    // Analyze recent performance to adjust difficulty
+    const recentSolved = solvedProblems
+      .sort((a, b) => new Date(b.solvedAt || b.updatedAt) - new Date(a.solvedAt || a.updatedAt))
+      .slice(0, 10);
+
+    let difficultyDistribution = { Easy: 0, Medium: 0, Hard: 0 };
+    for (const progress of recentSolved) {
+      const problem = await Problem.findById(progress.problemId).select('difficulty');
+      if (problem) {
+        difficultyDistribution[problem.difficulty]++;
+      }
     }
 
-    console.log(`Found ${recommendations.length} recommendations`);
+    // Smart difficulty selection based on performance
+    let targetDifficulties = ['Easy', 'Medium', 'Hard'];
+    const totalRecent = recentSolved.length;
+
+    if (totalRecent >= 5) {
+      const easyRate = difficultyDistribution.Easy / totalRecent;
+      const mediumRate = difficultyDistribution.Medium / totalRecent;
+      const hardRate = difficultyDistribution.Hard / totalRecent;
+
+      // If solving mostly easy → push to medium
+      if (easyRate > 0.6) {
+        targetDifficulties = ['Medium', 'Easy'];
+      }
+      // If solving mostly medium → mix medium and hard
+      else if (mediumRate > 0.5) {
+        targetDifficulties = ['Medium', 'Hard'];
+      }
+      // If solving hard problems → keep pushing
+      else if (hardRate > 0.3) {
+        targetDifficulties = ['Hard', 'Medium'];
+      }
+    } else {
+      // Not enough data, use experience level
+      if (req.user.experienceLevel === 'Beginner') {
+        targetDifficulties = ['Easy', 'Medium'];
+      } else if (req.user.experienceLevel === 'Intermediate') {
+        targetDifficulties = ['Medium', 'Hard'];
+      } else if (req.user.experienceLevel === 'Advanced') {
+        targetDifficulties = ['Hard', 'Medium'];
+      }
+    }
+
+    console.log('🎯 Target difficulties:', targetDifficulties);
+
+    // ============================================
+    // STEP 4: Build Recommendation Categories
+    // ============================================
+    
+    const recommendations = [];
+    const addedIds = new Set(solvedIds);
+
+    // Helper to add problems without duplicates
+    const addProblems = (problems, reason) => {
+      for (const p of problems) {
+        if (!addedIds.has(p._id.toString())) {
+          addedIds.add(p._id.toString());
+          recommendations.push({
+            ...p.toObject(),
+            recommendReason: reason
+          });
+        }
+      }
+    };
+
+    // CATEGORY 1: Problems to RETRY (attempted but not solved) - Spaced Repetition
+    const retryProblems = await Problem.find({
+      _id: { $in: attemptedIds }
+    })
+      .select('-testCases -solution.code')
+      .limit(3);
+    
+    addProblems(retryProblems, '🔄 Retry - You attempted this before');
+    console.log(`Added ${retryProblems.length} retry problems`);
+
+    // CATEGORY 2: Weak Topic Problems (highest priority for improvement)
+    if (allWeakTopics.length > 0) {
+      const weakTopicProblems = await Problem.find({
+        _id: { $nin: [...solvedIds, ...attemptedIds] },
+        topics: { $in: allWeakTopics },
+        difficulty: { $in: targetDifficulties }
+      })
+        .select('-testCases -solution.code')
+        .limit(5)
+        .sort({ 'metadata.frequency': -1 });
+      
+      addProblems(weakTopicProblems, `💪 Strengthen weak area: ${allWeakTopics.slice(0, 2).join(', ')}`);
+      console.log(`Added ${weakTopicProblems.length} weak topic problems`);
+    }
+
+    // CATEGORY 3: Target Company Problems
+    if (req.user.targetCompany && req.user.targetCompany.length > 0) {
+      const companyProblems = await Problem.find({
+        _id: { $nin: Array.from(addedIds) },
+        companies: { $in: req.user.targetCompany },
+        difficulty: { $in: targetDifficulties }
+      })
+        .select('-testCases -solution.code')
+        .limit(4)
+        .sort({ 'metadata.frequency': -1 });
+      
+      addProblems(companyProblems, `🏢 Asked at ${req.user.targetCompany.slice(0, 2).join(', ')}`);
+      console.log(`Added ${companyProblems.length} company problems`);
+    }
+
+    // CATEGORY 4: Practice Topic Problems (user's selected interests)
+    if (req.user.practiceTopics && req.user.practiceTopics.length > 0) {
+      const topicProblems = await Problem.find({
+        _id: { $nin: Array.from(addedIds) },
+        topics: { $in: req.user.practiceTopics },
+        difficulty: { $in: targetDifficulties }
+      })
+        .select('-testCases -solution.code')
+        .limit(4)
+        .sort({ 'metadata.frequency': -1 });
+      
+      addProblems(topicProblems, `📚 Your focus: ${req.user.practiceTopics.slice(0, 2).join(', ')}`);
+      console.log(`Added ${topicProblems.length} topic problems`);
+    }
+
+    // CATEGORY 5: Progressive Challenge (slightly harder than current level)
+    const challengeProblems = await Problem.find({
+      _id: { $nin: Array.from(addedIds) },
+      difficulty: targetDifficulties[0] === 'Easy' ? 'Medium' : 'Hard'
+    })
+      .select('-testCases -solution.code')
+      .limit(2)
+      .sort({ 'metadata.frequency': -1 });
+    
+    addProblems(challengeProblems, '🚀 Challenge yourself!');
+    console.log(`Added ${challengeProblems.length} challenge problems`);
+
+    // CATEGORY 6: Popular/Trending (fill remaining slots)
+    if (recommendations.length < 15) {
+      const popularProblems = await Problem.find({
+        _id: { $nin: Array.from(addedIds) }
+      })
+        .select('-testCases -solution.code')
+        .limit(15 - recommendations.length)
+        .sort({ 'metadata.frequency': -1 });
+      
+      addProblems(popularProblems, '⭐ Popular problem');
+      console.log(`Added ${popularProblems.length} popular problems`);
+    }
+
+    // ============================================
+    // STEP 5: Calculate Insights
+    // ============================================
+    
+    const insights = {
+      weakTopics: allWeakTopics.slice(0, 3),
+      strongTopics: topicSolveRates.filter(t => t.solveRate >= 80).map(t => t.topic).slice(0, 3),
+      currentLevel: targetDifficulties[0],
+      totalSolved: solvedProblems.length,
+      totalAttempted: attemptedProblems.length,
+      improvementAreas: allWeakTopics.length > 0 
+        ? `Focus on ${allWeakTopics[0]} to improve your overall performance`
+        : 'Great job! Keep practicing across all topics',
+      nextMilestone: solvedProblems.length < 50 
+        ? `${50 - solvedProblems.length} more to reach 50 problems!`
+        : solvedProblems.length < 100
+        ? `${100 - solvedProblems.length} more to reach 100 problems!`
+        : `You're a pro! ${solvedProblems.length} problems solved 🎉`
+    };
+
+    console.log(`✅ Total recommendations: ${recommendations.length}`);
 
     res.json({
       success: true,
       count: recommendations.length,
       problems: recommendations,
+      insights,
       basedOn: {
         targetCompanies: req.user.targetCompany || [],
         practiceTopics: req.user.practiceTopics || [],
         experienceLevel: req.user.experienceLevel || 'Not set',
-        domain: req.user.domain || 'Not set'
+        weakTopics: allWeakTopics,
+        recommendedDifficulty: targetDifficulties[0]
       }
     });
   } catch (error) {
