@@ -132,14 +132,14 @@ export default function ProgressPage() {
           {/* Topic Proficiency */}
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">Topic Proficiency</h2>
-            {topics.length > 0 ? (
+            {Array.isArray(topics) && topics.length > 0 ? (
               <ProgressChart 
                 type="bar"
                 data={{
-                  labels: topics.slice(0, 8).map(t => t.topicName),
+                  labels: topics.slice(0, 8).map(t => t.topic || t.topicName || 'Unknown'),
                   datasets: [{
                     label: 'Proficiency Score',
-                    data: topics.slice(0, 8).map(t => t.proficiencyScore),
+                    data: topics.slice(0, 8).map(t => t.proficiencyScore || 0),
                     backgroundColor: 'rgba(59, 130, 246, 0.8)',
                     borderColor: 'rgba(59, 130, 246, 1)',
                     borderWidth: 2
@@ -205,7 +205,7 @@ export default function ProgressPage() {
         </div>
 
         {/* Recommendations Section */}
-        {topics.length > 0 && (
+        {Array.isArray(topics) && topics.length > 0 && (
           <div className="mt-8 bg-linear-to-r from-blue-900/30 to-purple-900/30 border border-blue-800/50 rounded-lg p-6">
             <div className="flex items-start justify-between">
               <div>
@@ -215,14 +215,14 @@ export default function ProgressPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {topics
-                    .filter(t => t.proficiencyScore < 60)
+                    .filter(t => (t.proficiencyScore || 0) < 60)
                     .slice(0, 3)
-                    .map(topic => (
+                    .map((topic, idx) => (
                       <span 
-                        key={topic._id}
+                        key={topic._id || idx}
                         className="px-4 py-2 bg-blue-900/50 text-blue-300 rounded-full text-sm font-medium"
                       >
-                        {topic.topicName} ({topic.proficiencyScore}% proficiency)
+                        {topic.topic || topic.topicName || 'Unknown'} ({topic.proficiencyScore || 0}% proficiency)
                       </span>
                     ))}
                 </div>

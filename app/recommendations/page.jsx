@@ -55,7 +55,9 @@ export default function RecommendationsPage() {
     );
   }
 
-  const weakTopics = topics.filter(t => t.proficiencyScore < 60).slice(0, 3);
+  const weakTopics = Array.isArray(topics) 
+    ? topics.filter(t => (t.proficiencyScore || 0) < 60).slice(0, 3)
+    : [];
   
   // Filter recommendations
   const filteredRecommendations = recommendations.filter(problem => {
@@ -282,7 +284,7 @@ export default function RecommendationsPage() {
                   key={topic._id}
                   className="bg-gray-900/40 backdrop-blur rounded-2xl p-5 border border-orange-500/30 hover:border-orange-500/50 transition-all"
                 >
-                  <p className="font-semibold text-lg mb-2">{topic.topicName}</p>
+                  <p className="font-semibold text-lg mb-2">{topic.topic || topic.topicName || 'Unknown'}</p>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
                       <div 
@@ -416,9 +418,9 @@ export default function RecommendationsPage() {
                               return `Strengthens ${matchedTopics.join(', ')} - your practice topics 📚`;
                             } else if (matchedCompanies && matchedCompanies.length > 0) {
                               return `Asked by ${matchedCompanies.join(', ')} - your target ${matchedCompanies.length > 1 ? 'companies' : 'company'} 🏢`;
-                            } else if (weakTopics.some(t => problemTopics.includes(t.topicName))) {
+                            } else if (weakTopics.some(t => problemTopics.includes(t.topic || t.topicName))) {
                               const weakTopic = problemTopics.find(topic => 
-                                weakTopics.some(wt => wt.topicName === topic)
+                                weakTopics.some(wt => (wt.topic || wt.topicName) === topic)
                               );
                               return `Helps improve ${weakTopic} - an area that needs attention 💪`;
                             } else {
