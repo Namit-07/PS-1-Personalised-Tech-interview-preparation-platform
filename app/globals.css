@@ -246,3 +246,114 @@ html:not(.dark) body {
 .dark .stat-card:hover {
   border-color: #3b82f6;
 }
+
+/* ═══════════════════════════════════════════
+   Landing page — premium dark theme
+   ═══════════════════════════════════════════ */
+
+/* Full dark landing regardless of theme */
+.lp {
+  min-height: 100vh;
+  background: #07090f;
+  color: #fff;
+}
+
+/* Nav */
+.lp-nav {
+  background: rgba(7, 9, 15, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Hero */
+.lp-hero {
+  background: linear-gradient(180deg, #07090f 0%, #0a0e1a 100%);
+}
+
+/* Hero radial glow */
+.lp-hero-glow {
+  background: radial-gradient(ellipse, rgba(59,130,246,0.12) 0%, transparent 70%);
+}
+
+/* Section dark base */
+.lp-section-dark {
+  background: #07090f;
+}
+
+/* Heading gradient text */
+.lp-gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #60a5fa 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: lpGradientShift 6s ease-in-out infinite;
+}
+
+@keyframes lpGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Cursor blink */
+.lp-cursor {
+  animation: lpBlink 1s step-end infinite;
+}
+@keyframes lpBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Fade in on load */
+@keyframes lpFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lp-fade-in {
+  animation: lpFadeIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lp-d1 { animation-delay: 0.1s; }
+.lp-d2 { animation-delay: 0.2s; }
+.lp-d3 { animation-delay: 0.35s; }
+.lp-d4 { animation-delay: 0.5s; }
+
+/* Dashboard mockup */
+.lp-dashboard {
+  position: relative;
+}
+.lp-dashboard-inner {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04),
+    0 20px 60px -10px rgba(0,0,0,0.6),
+    0 0 100px -20px rgba(59,130,246,0.08);
+}
+
+/* Animated progress bars in dashboard */
+@keyframes lpBarFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.lp-bar-fill {
+  transform-origin: left;
+  animation: lpBarFill 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.8s both;
+}
+.lp-bar-d1 { animation-delay: 1s; }
+.lp-bar-d2 { animation-delay: 1.2s; }
+
+/* Topics ticker */
+.lp-ticker {
+  display: flex;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+.lp-ticker-track {
+  display: flex;
+  flex-shrink: 0;
+  animation: lpTicker 30s linear infinite;
+}
+@keyframes lpTicker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
